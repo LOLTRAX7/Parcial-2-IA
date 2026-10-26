@@ -1,0 +1,5 @@
+{
+  "name": "Game.Editor",
+  "references": ["Game", "Unity.ugui"],
+  "includePlatforms": ["Editor"]
+}

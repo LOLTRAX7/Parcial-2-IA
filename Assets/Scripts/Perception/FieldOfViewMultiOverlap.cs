@@ -1,0 +1,62 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+public class FieldOfViewMultiOverlap : FieldOfViewSensor
+{
+    [Header("Overlap")]
+    [SerializeField] private float _checkInterval = 0.2f;
+
+    private readonly Collider[] _buffer = new Collider[128];
+
+    private float _timer;
+    private readonly List<Transform> _visibleTargets = new List<Transform>();
+
+    public IReadOnlyList<Transform> VisibleTargets => _visibleTargets;
+
+    private void Update()
+    {
+        _timer += Time.deltaTime;
+
+        if (_timer >= _checkInterval)
+        {
+            _timer = 0f;
+            CheckVisibility();
+        }
+    }
+
+    private void CheckVisibility()
+    {
+        int count = Physics.OverlapSphereNonAlloc(transform.position, _viewRadius, _buffer, _targetMask);
+
+        _visibleTargets.Clear();
+
+        Transform closest = null;
+        float closestDistance = float.MaxValue;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider hit = _buffer[i];
+
+            if (hit == null || hit.transform.IsChildOf(transform)) continue;
+
+            Transform candidate = hit.transform;
+            if (!IsAllowed(candidate) || _visibleTargets.Contains(candidate)) continue;
+
+            _target = candidate;
+
+            if (!IsVisibleNow(candidate)) continue;
+
+            _visibleTargets.Add(candidate);
+
+            float distance = (candidate.position - transform.position).sqrMagnitude;
+
+            if (distance >= closestDistance) continue;
+
+            closestDistance = distance;
+            closest = candidate;
+        }
+
+        _target = closest;
+        CanSeeTarget = closest != null;
+    }
+}
