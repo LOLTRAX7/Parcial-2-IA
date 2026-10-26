@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -8,6 +9,7 @@ public class HunterAgent : Agent
     public enum HunterState { Search, Attack, Gather, Flee, Exit, Dead }
 
     public static HunterAgent Current { get; private set; }
+    public static event Action<bool, bool> AvailabilityChanged = delegate { };
 
     [Header("Movement")]
     [FormerlySerializedAs("moveSpeed")]
@@ -96,6 +98,9 @@ public class HunterAgent : Agent
     private bool _bodyVisible = true;
     private bool _legacyMode;
     private bool _captureRequested;
+    private bool _hasReportedAvailability;
+    private bool _reportedPresent;
+    private bool _reportedSafe;
 
     private string _debugTarget = "-";
     private Zone _chosenSafeZone;
@@ -141,7 +146,11 @@ public class HunterAgent : Agent
     public string DebugTarget => _debugTarget;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatic() => Current = null;
+    private static void ResetStatic()
+    {
+        Current = null;
+        AvailabilityChanged = delegate { };
+    }
 
     private void Awake()
     {
@@ -222,7 +231,9 @@ public class HunterAgent : Agent
 
     private void OnDestroy()
     {
-        if (Current == this) Current = null;
+        if (Current != this) return;
+        Current = null;
+        AvailabilityChanged(false, false);
     }
 
     private void BuildHuntingNodeList()
@@ -243,6 +254,18 @@ public class HunterAgent : Agent
         if (_attackCooldown > 0f) _attackCooldown -= Time.deltaTime;
 
         _fsm.Update();
+    }
+
+    private void LateUpdate()
+    {
+        bool present = IsPresent;
+        bool safe = present && IsInSafeZone;
+        if (_hasReportedAvailability && present == _reportedPresent && safe == _reportedSafe) return;
+
+        _hasReportedAvailability = true;
+        _reportedPresent = present;
+        _reportedSafe = safe;
+        AvailabilityChanged(present, safe);
     }
 
     public void MoveTo(Vector3 destination, float speed)

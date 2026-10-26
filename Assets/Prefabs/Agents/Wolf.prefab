@@ -286,9 +286,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83d6488dfbbd21141b49cd7663db6ce3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Game::WolfAgent
-  _patrolSpeed: 3.4
-  _alertSpeed: 4.2
-  _chaseSpeed: 4.9
+  _patrolSpeed: 3.8
+  _alertSpeed: 4.6
+  _chaseSpeed: 5.1
   _maxSteering: 20
   _viewRadius: 18
   _viewAngle: 110

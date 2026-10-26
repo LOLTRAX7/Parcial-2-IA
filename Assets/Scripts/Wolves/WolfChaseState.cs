@@ -11,9 +11,15 @@ public class WolfChaseState : State<WolfAgent.WolfState>
 
     public override void Enter()
     {
-        if (_wolf.Hunter == null || _wolf.Hunter.IsDead || _wolf.Hunter.IsInSafeZone)
+        if (_wolf.HunterIsDead || _wolf.HunterInsideSafeZone)
         {
             _fsm.ChangeState(WolfAgent.WolfState.Patrol);
+            return;
+        }
+
+        if (!_wolf.CanSeeHunter)
+        {
+            _fsm.ChangeState(WolfAgent.WolfState.GoToPosition);
             return;
         }
 
@@ -22,16 +28,14 @@ public class WolfChaseState : State<WolfAgent.WolfState>
 
     public override void Update()
     {
-        HunterAgent hunter = _wolf.Hunter;
-
-        if (hunter == null || hunter.IsDead)
+        if (_wolf.HunterIsDead)
         {
             _wolf.ForgetHunter();
             _fsm.ChangeState(WolfAgent.WolfState.Patrol);
             return;
         }
 
-        if (hunter.IsInSafeZone)
+        if (_wolf.HunterInsideSafeZone)
         {
             FeedbackLog.Add(_wolf.name + " stops chasing: the hunter entered a safe zone.", new Color(0.65f, 0.5f, 0.92f));
             _wolf.ForgetHunter();
@@ -45,6 +49,7 @@ public class WolfChaseState : State<WolfAgent.WolfState>
             return;
         }
 
+        HunterAgent hunter = _wolf.Hunter;
         _wolf.NotifyTargetSpotted();
         _wolf.MoveTo(hunter.transform.position, _wolf.ChaseSpeed);
 

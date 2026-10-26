@@ -17,9 +17,9 @@ public class WolfAgent : Agent
     public static event Action<WolfAgent, Vector3> AlertIssued = delegate { };
 
     [Header("Speeds (lower than the hunter)")]
-    [SerializeField] private float _patrolSpeed = 3.4f;
-    [SerializeField] private float _alertSpeed = 4.2f;
-    [SerializeField] private float _chaseSpeed = 4.9f;
+    [SerializeField] private float _patrolSpeed = 3.8f;
+    [SerializeField] private float _alertSpeed = 4.6f;
+    [SerializeField] private float _chaseSpeed = 5.1f;
     [SerializeField] private float _maxSteering = 20f;
 
     [Header("Perception (FoV)")]
@@ -55,6 +55,8 @@ public class WolfAgent : Agent
     private Vector3 _pendingAlertPosition;
     private float _nextHowlTime;
     private bool _loggedNoRoute;
+    private bool _hunterPresent = true;
+    private bool _hunterProtected;
 
     public WolfState CurrentState => _fsm.CurrentStateID;
 
@@ -77,9 +79,25 @@ public class WolfAgent : Agent
     public bool HasKnownPosition => _hasKnownPosition;
     public bool HasPendingAlert => _hasPendingAlert;
     public Vector3 LastKnownPosition => _lastKnownPosition;
-    public bool CanSeeHunter => _sensor != null && _sensor.CanSeeTarget && Hunter != null
-        && Hunter.IsPresent && !Hunter.IsInSafeZone && _sensor.IsVisibleNow(Hunter.transform);
-    public HunterAgent Hunter => HunterAgent.Current;
+    public HunterAgent Hunter
+    {
+        get
+        {
+            Transform target = _sensor != null ? _sensor.Target : null;
+            return target != null ? target.GetComponentInParent<HunterAgent>() : null;
+        }
+    }
+
+    public bool CanSeeHunter
+    {
+        get
+        {
+            HunterAgent hunter = Hunter;
+            return !_hunterProtected && _hunterPresent && _sensor != null && _sensor.CanSeeTarget
+                && hunter != null && hunter.IsPresent && !hunter.IsInSafeZone
+                && _sensor.IsVisibleNow(hunter.transform);
+        }
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatic()
@@ -119,7 +137,7 @@ public class WolfAgent : Agent
     {
         if (candidate == null) return false;
 
-        HunterAgent hunter = candidate.GetComponent<HunterAgent>();
+        HunterAgent hunter = candidate.GetComponentInParent<HunterAgent>();
         if (hunter == null) return false;
 
         return hunter.IsPresent && !hunter.IsInSafeZone;
@@ -128,11 +146,13 @@ public class WolfAgent : Agent
     private void OnEnable()
     {
         AlertIssued += HandleAlertIssued;
+        HunterAgent.AvailabilityChanged += HandleHunterAvailability;
     }
 
     private void OnDisable()
     {
         AlertIssued -= HandleAlertIssued;
+        HunterAgent.AvailabilityChanged -= HandleHunterAvailability;
     }
 
     private void Start()
@@ -170,7 +190,16 @@ public class WolfAgent : Agent
 
     private void HandleStateChanged(WolfState state)
     {
+        _navigator.Configure(true, state == WolfState.GoToPosition);
+        _navigator.ResetPath();
         OnStateChanged(state);
+    }
+
+    private void HandleHunterAvailability(bool present, bool safe)
+    {
+        _hunterPresent = present;
+        _hunterProtected = safe;
+        if (!present || safe) ForgetHunter();
     }
 
     public void Configure(Graph graph, IReadOnlyList<Node> patrolNodes, bool pingPong)
@@ -237,7 +266,7 @@ public class WolfAgent : Agent
 
     public float FlatDistanceToHunter()
     {
-        return Hunter != null ? FlatDistanceTo(Hunter.transform.position) : float.PositiveInfinity;
+        return CanSeeHunter ? FlatDistanceTo(Hunter.transform.position) : float.PositiveInfinity;
     }
 
     public void Scan(float degreesPerSecond)
@@ -272,7 +301,7 @@ public class WolfAgent : Agent
     private void HandleAlertIssued(WolfAgent source, Vector3 position)
     {
         if (source == this) return;
-        if (Hunter == null || Hunter.IsDead || Hunter.IsInSafeZone) return;
+        if (!_hunterPresent || _hunterProtected) return;
 
         _pendingAlertPosition = position;
         _hasPendingAlert = true;
@@ -300,11 +329,12 @@ public class WolfAgent : Agent
         if (_navigator != null) _navigator.ResetPath();
     }
 
-    public bool HunterInsideSafeZone => Hunter != null && Hunter.IsInSafeZone;
-    public bool HunterIsDead => Hunter == null || Hunter.IsDead;
+    public bool HunterInsideSafeZone => _hunterProtected;
+    public bool HunterIsDead => !_hunterPresent;
 
     public bool TryCaptureHunter()
     {
+        if (!CanSeeHunter) return false;
         HunterAgent hunter = Hunter;
 
         if (hunter == null || !hunter.IsPresent || hunter.IsInSafeZone) return false;
