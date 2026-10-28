@@ -1,41 +1,53 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 [RequireComponent(typeof(HunterAgent))]
 public class HunterFeedback : MonoBehaviour
 {
-    [SerializeField] private Text _label;
-    [SerializeField] private RectTransform _canvas;
     private HunterAgent _hunter;
-    private Camera _camera;
     private GraphNavigator _navigator;
+    private string _text;
 
     private void Awake()
     {
         _hunter = GetComponent<HunterAgent>();
-        _camera = Camera.main;
         _navigator = GetComponent<GraphNavigator>();
     }
 
     private void LateUpdate()
     {
-        if (_label == null || _canvas == null) return;
-        if (_camera != null) _canvas.rotation = _camera.transform.rotation;
-
-        string state = _hunter.CurrentState.ToString();
-        if (_hunter.IsLegacyMode && _hunter.CurrentState == HunterAgent.HunterState.Search)
-            state = "Patrol";
-
-        string gathers = _hunter.Gathers.ToString();
-        if (!_hunter.IsLegacyMode) gathers += " / " + _hunter.RequiredGathers;
-        string target = _hunter.DebugTarget;
+        string state = StateName();
+        if (_hunter.IsLegacyMode && _hunter.CurrentState == HunterAgent.HunterState.Search) state = "Patrullando";
+        _text = "Cazador: " + state + " | Recolectados: " + _hunter.Gathers;
+        if (!_hunter.IsLegacyMode) _text += "/" + _hunter.RequiredGathers;
+        if (_navigator != null && _navigator.UsingPathfinding) _text += " | Ruta A*";
+        if (_hunter.VisibleWolfCount > 0) _text += "\nLobo detectado";
         if (_hunter.CurrentState == HunterAgent.HunterState.Flee && _hunter.ChosenSafeZone != null)
-            target = _hunter.ChosenSafeZone.name;
-        else if (_hunter.CurrentState == HunterAgent.HunterState.Exit && _hunter.ExitZone != null)
-            target = _hunter.ExitZone.name;
+            _text += "\nRefugio: " + FeedbackLabel.AgentName(_hunter.ChosenSafeZone.name);
+        else if (_hunter.CurrentState == HunterAgent.HunterState.Attack || _hunter.CurrentState == HunterAgent.HunterState.Gather)
+            _text += "\nObjetivo: " + FeedbackLabel.AgentName(_hunter.DebugTarget);
+    }
 
-        string navigation = _navigator != null && _navigator.UsingPathfinding ? " | A*" : "";
-        _label.text = name + ": " + state + navigation + "\nTarget: " + target
-            + "\nGathered: " + gathers + " | Wolves: " + _hunter.VisibleWolfCount;
+    private string StateName()
+    {
+        switch (_hunter.CurrentState)
+        {
+            case HunterAgent.HunterState.Search: return "Buscando";
+            case HunterAgent.HunterState.Attack: return "Atacando";
+            case HunterAgent.HunterState.Gather: return "Recolectando";
+            case HunterAgent.HunterState.Flee: return "Huyendo";
+            case HunterAgent.HunterState.Exit: return "Hacia la salida";
+            case HunterAgent.HunterState.Dead: return "Eliminado";
+            default: return "";
+        }
+    }
+
+    private void OnGUI()
+    {
+        FeedbackLabel.DrawGame(transform.position + Vector3.up * 2f, _text);
+    }
+
+    private void OnDrawGizmos()
+    {
+        FeedbackLabel.DrawScene(transform.position + Vector3.up * 2f, _text);
     }
 }

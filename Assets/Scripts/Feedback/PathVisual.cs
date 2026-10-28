@@ -7,8 +7,9 @@ public class PathVisual : MonoBehaviour
     [SerializeField] private float _height = 0.2f;
     private GraphNavigator _navigator;
 
-    private void OnDrawGizmosSelected()
+    private void OnDrawGizmos()
     {
+        if (!Application.isPlaying) return;
         if (_navigator == null) _navigator = GetComponent<GraphNavigator>();
         if (!_navigator.UsingPathfinding) return;
 

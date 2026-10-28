@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 [RequireComponent(typeof(WolfAgent))]
 public class WolfFeedback : MonoBehaviour
@@ -14,9 +13,7 @@ public class WolfFeedback : MonoBehaviour
     private ColorFeedback _colorFeedback;
     private AudioSource _audio;
     [SerializeField] private AudioClip _howlClip;
-    [SerializeField] private Text _label;
-    [SerializeField] private RectTransform _canvas;
-    private Camera _camera;
+    private string _text;
     private string _message;
     private float _messageUntil;
 
@@ -28,7 +25,6 @@ public class WolfFeedback : MonoBehaviour
         _audio.playOnAwake = false;
         _audio.spatialBlend = 0f;
         _audio.volume = 0.5f;
-        _camera = Camera.main;
     }
 
     private void OnEnable()
@@ -60,24 +56,48 @@ public class WolfFeedback : MonoBehaviour
     private void HandleHowled(Vector3 position)
     {
         if (_howlClip != null) _audio.PlayOneShot(_howlClip);
-        _message = "Hunter spotted | Alert sent";
-        _messageUntil = Time.time + 1.5f;
+        _message = "Alerta enviada";
+        _messageUntil = Time.time + 2f;
     }
 
     private void HandleAlertReceived(WolfAgent source, Vector3 position)
     {
         _colorFeedback.Flash(_alertFlashColor, 0.7f);
-        _message = "Alert from " + source.name;
-        _messageUntil = Time.time + 1.5f;
+        _message = "Alerta recibida de " + FeedbackLabel.AgentName(source.name);
+        _messageUntil = Time.time + 2f;
     }
 
     private void LateUpdate()
     {
-        if (_label == null || _canvas == null) return;
-        if (_camera != null) _canvas.rotation = _camera.transform.rotation;
-        string known = _wolf.HasKnownPosition ? WolfAgent.Format(_wolf.LastKnownPosition) : "-";
-        string navigation = _wolf.Navigator.UsingPathfinding ? " | A*" : "";
-        _label.text = name + ": " + _wolf.CurrentState + navigation + "\nKnown: " + known;
-        if (Time.time < _messageUntil) _label.text += "\n" + _message;
+        _text = FeedbackLabel.AgentName(name) + ": " + StateName();
+        if (_wolf.Navigator.UsingPathfinding) _text += " | Ruta A*";
+        if (_wolf.CanSeeHunter) _text += "\nCazador detectado";
+        if (_wolf.HasKnownPosition) _text += "\nÚltima posición: " + WolfAgent.Format(_wolf.LastKnownPosition);
+        if (Time.time < _messageUntil) _text += "\n" + _message;
+    }
+
+    private string StateName()
+    {
+        switch (_wolf.CurrentState)
+        {
+            case WolfAgent.WolfState.Patrol: return "Patrullando";
+            case WolfAgent.WolfState.Chase: return "Persiguiendo";
+            case WolfAgent.WolfState.GoToPosition: return "Hacia última posición";
+            case WolfAgent.WolfState.Search: return "Buscando";
+            default: return "";
+        }
+    }
+
+    private void OnGUI()
+    {
+        FeedbackLabel.DrawGame(transform.position + Vector3.up * 2f, _text);
+    }
+
+    private void OnDrawGizmos()
+    {
+        FeedbackLabel.DrawScene(transform.position + Vector3.up * 2f, _text);
+        if (!Application.isPlaying || _wolf == null || !_wolf.HasKnownPosition) return;
+        Gizmos.color = _goToPositionColor;
+        Gizmos.DrawWireSphere(_wolf.LastKnownPosition + Vector3.up * 0.2f, 0.5f);
     }
 }
