@@ -7,6 +7,11 @@ public class InterestPoint : MonoBehaviour
     [SerializeField] private Renderer feedbackRenderer;
 
     private float _currentDurability;
+    private bool _counted;
+    public static int ActiveCount { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetCount() => ActiveCount = 0;
 
     private void Awake()
     {
@@ -29,8 +34,20 @@ public class InterestPoint : MonoBehaviour
 
     private void OnEnable()
     {
+        if (!_counted)
+        {
+            ActiveCount++;
+            _counted = true;
+        }
         _currentDurability = maxDurability;
         UpdateFeedback();
+    }
+
+    private void OnDisable()
+    {
+        if (!_counted) return;
+        ActiveCount = Mathf.Max(0, ActiveCount - 1);
+        _counted = false;
     }
 
     public void TakeDamage(float amount)

@@ -13,8 +13,7 @@ public class HunterInterestPoints
     {
         if (_hunter.InterestPointPrefab == null) return false;
 
-        int activeCount = Object.FindObjectsByType<InterestPoint>(FindObjectsSortMode.None).Length;
-        return activeCount < _hunter.MaxActiveInterestPoints;
+        return InterestPoint.ActiveCount < _hunter.MaxActiveInterestPoints;
     }
 
     public void SpawnInHuntingZone()
@@ -25,11 +24,7 @@ public class HunterInterestPoints
         Spawn(zone.RandomPoint());
     }
 
-    public void SpawnAtHunter()
-    {
-        if (!HasRoom()) return;
-        Spawn(_hunter.transform.position);
-    }
+
 
     private void Spawn(Vector3 position)
     {

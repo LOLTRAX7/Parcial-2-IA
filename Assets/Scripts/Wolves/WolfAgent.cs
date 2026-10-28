@@ -108,7 +108,11 @@ public class WolfAgent : Agent
     private void Awake()
     {
         DisablePhysicsInterference();
+        InitializeComponents();
+    }
 
+    private void InitializeComponents()
+    {
         if (GetComponentInChildren<Collider>() == null)
         {
             SphereCollider sphere = gameObject.AddComponent<SphereCollider>();
@@ -157,12 +161,22 @@ public class WolfAgent : Agent
 
     private void Start()
     {
+        InitializeNavigation();
+        InitializeStates();
+    }
+
+    private void InitializeNavigation()
+    {
         _graph = Graph.Current;
         _configured = _patrolNodes.Count > 0;
 
         _sensor.Configure(_viewRadius, _viewAngle, _eyeHeight, GameLayers.HunterMask, GameLayers.WallMask);
         _navigator.Configure(true);
 
+    }
+
+    private void InitializeStates()
+    {
         _fsm.AddState(WolfState.Patrol, new WolfPatrolState(this));
         _fsm.AddState(WolfState.Chase, new WolfChaseState(this));
         _fsm.AddState(WolfState.GoToPosition, new WolfGoToPositionState(this));

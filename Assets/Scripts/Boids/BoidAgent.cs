@@ -40,7 +40,7 @@ public class BoidAgent : Agent
     [SerializeField] private Color harvestColor = new Color(0.3f, 0.6f, 1f);
     [SerializeField] private Color eliminatedColor = Color.gray;
 
-    private readonly Collider[] _queryBuffer = new Collider[128];
+    private BoidPerception _perception;
 
     private Health _health;
     private ColorFeedback _colorFeedback;
@@ -58,6 +58,12 @@ public class BoidAgent : Agent
     public bool IsPendingGather { get; private set; }
 
     private void Awake()
+    {
+        InitializeComponents();
+        _velocity = RandomDirection() * maxSpeed;
+    }
+
+    private void InitializeComponents()
     {
         _spawnHeight = transform.position.y;
         GameLayers.SetLayer(gameObject, GameLayers.Boid);
@@ -81,7 +87,7 @@ public class BoidAgent : Agent
         _colorFeedback = gameObject.GetOrAddComponent<ColorFeedback>();
         _colorFeedback.SetRenderer(feedbackRenderer);
 
-        _velocity = RandomDirection() * maxSpeed;
+        _perception = new BoidPerception(this);
     }
 
     private void OnEnable()
@@ -99,9 +105,13 @@ public class BoidAgent : Agent
     private void Update()
     {
         if (IsEliminated) return;
+        RefreshPerception();
+        Vector3 steering = CalculateSteering();
+        ApplyMovement(steering);
+    }
 
-        GatherNeighbors();
-        DetectThreat();
+    private Vector3 CalculateSteering()
+    {
         bool hasThreat = _threat != null;
 
         float currentSeparationWeight = hasThreat ? separationWeight * separationWeightWhileEvading : separationWeight;
@@ -135,6 +145,11 @@ public class BoidAgent : Agent
             }
         }
 
+        return steering;
+    }
+
+    private void ApplyMovement(Vector3 steering)
+    {
         _velocity += steering;
         _velocity.y = 0f;
         _velocity = Vector3.ClampMagnitude(_velocity, maxSpeed);
@@ -153,77 +168,28 @@ public class BoidAgent : Agent
         }
     }
 
-    private void DetectThreat()
+    private void RefreshPerception()
     {
-        float effectiveRadius = _threat != null ? hunterVisionRadius + threatLossMargin : hunterVisionRadius;
-
-        _threat = null;
-        float nearestDist = effectiveRadius;
-
-        int count = Physics.OverlapSphereNonAlloc(transform.position, effectiveRadius, _queryBuffer, GameLayers.HunterMask);
-
-        for (int i = 0; i < count; i++)
-        {
-            HunterAgent hunter = _queryBuffer[i].GetComponentInParent<HunterAgent>();
-            if (hunter == null || hunter.IsDead) continue;
-
-            float dist = Vector3.Distance(transform.position, hunter.transform.position);
-            if (dist <= nearestDist)
-            {
-                _threat = hunter;
-                nearestDist = dist;
-            }
-        }
-    }
-
-    private void GatherNeighbors()
-    {
+        float threatRadius = _threat != null ? hunterVisionRadius + threatLossMargin : hunterVisionRadius;
+        _perception.Refresh(neighborRadius, threatRadius, poiVisionRadius);
         _neighbors.Clear();
-
-        int count = Physics.OverlapSphereNonAlloc(transform.position, neighborRadius, _queryBuffer, GameLayers.BoidMask);
-
-        for (int i = 0; i < count; i++)
+        foreach (BoidAgent neighbor in _perception.Neighbors)
         {
-            BoidAgent other = _queryBuffer[i].GetComponentInParent<BoidAgent>();
-
-            if (other != null && other != this && !_neighbors.Contains(other))
-                _neighbors.Add(other);
+            if (neighbor != null && neighbor.isActiveAndEnabled) _neighbors.Add(neighbor);
         }
+        _threat = _perception.Threat;
+        if (_threat != null && (!_threat.IsPresent || Vector3.Distance(transform.position, _threat.transform.position) > threatRadius))
+            _threat = null;
     }
 
     private void UpdatePoiTarget()
     {
-
-        if (_targetPoi == null)
-        {
-            _targetPoi = FindNearestInterestPoint();
-            _harvestTimer = 0f;
-        }
-    }
-
-    private InterestPoint FindNearestInterestPoint()
-    {
-        InterestPoint nearest = null;
-        float nearestDist = poiVisionRadius;
-
-        int count = Physics.OverlapSphereNonAlloc(transform.position, poiVisionRadius, _queryBuffer, GameLayers.InterestMask);
-
-        for (int i = 0; i < count; i++)
-        {
-            InterestPoint poi = _queryBuffer[i].GetComponentInParent<InterestPoint>();
-            if (poi == null) continue;
-
-            if (Bounds.Instance != null && !Bounds.Instance.Contains(poi.transform.position)) continue;
-
-            float dist = Vector3.Distance(transform.position, poi.transform.position);
-            if (dist <= nearestDist)
-            {
-                nearest = poi;
-                nearestDist = dist;
-            }
-        }
-
-        return nearest;
+        if (_targetPoi != null && (!_targetPoi.isActiveAndEnabled || Vector3.Distance(transform.position, _targetPoi.transform.position) > poiVisionRadius))
+            _targetPoi = null;
+        if (_targetPoi != null) return;
+        InterestPoint candidate = _perception.InterestPoint;
+        _targetPoi = candidate != null && candidate.isActiveAndEnabled ? candidate : null;
+        _harvestTimer = 0f;
     }
 
     private void TryHarvest()
@@ -287,6 +253,7 @@ public class BoidAgent : Agent
         IsPendingGather = false;
         _targetPoi = null;
         _threat = null;
+        _perception.Reset();
         _harvestTimer = 0f;
         _velocity = RandomDirection() * maxSpeed;
 

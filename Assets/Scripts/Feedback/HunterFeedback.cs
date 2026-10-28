@@ -16,9 +16,8 @@ public class HunterFeedback : MonoBehaviour
     private void LateUpdate()
     {
         string state = StateName();
-        if (_hunter.IsLegacyMode && _hunter.CurrentState == HunterAgent.HunterState.Search) state = "Patrullando";
         _text = "Cazador: " + state + " | Recolectados: " + _hunter.Gathers;
-        if (!_hunter.IsLegacyMode) _text += "/" + _hunter.RequiredGathers;
+        _text += "/" + _hunter.RequiredGathers;
         if (_navigator != null && _navigator.UsingPathfinding) _text += " | Ruta A*";
         if (_hunter.VisibleWolfCount > 0) _text += "\nLobo detectado";
         if (_hunter.CurrentState == HunterAgent.HunterState.Flee && _hunter.ChosenSafeZone != null)

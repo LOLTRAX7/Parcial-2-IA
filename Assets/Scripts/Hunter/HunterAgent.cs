@@ -50,25 +50,13 @@ public class HunterAgent : Agent
     [SerializeField] private float _boidRespawnDelay = 5f;
 
     [Header("Interest points")]
-    [Tooltip("Interest point prefab used in both exam scenes.")]
+    [Tooltip("Interest point prefab spawned inside the hunting ground.")]
     [FormerlySerializedAs("interestPointPrefab")]
     [SerializeField] private InterestPoint _interestPointPrefab;
     [FormerlySerializedAs("poiSpawnInterval")]
     [SerializeField] private float _interestPointInterval = 6f;
     [FormerlySerializedAs("maxActiveInterestPoints")]
     [SerializeField] private int _maxActiveInterestPoints = 5;
-    [FormerlySerializedAs("interestPointPlaceDuration")]
-    [SerializeField] private float _legacyInterestPointPlaceDuration = 2f;
-
-    [Header("Exam 1 compatibility")]
-    [Tooltip("Exam 1 patrol waypoints, used only in scenes without the Exam 2 zones.")]
-    [FormerlySerializedAs("waypoints")]
-    [SerializeField] private List<Transform> _legacyWaypoints = new List<Transform>();
-    [FormerlySerializedAs("waypointArrivalDistance")]
-    [SerializeField] private float _legacyWaypointArrivalDistance = 0.4f;
-    [FormerlySerializedAs("pingPongPatrol")]
-    [SerializeField] private bool _legacyPingPongPatrol;
-
     [Header("Visual feedback")]
     [SerializeField] private Color _searchColor = Color.white;
     [SerializeField] private Color _attackColor = new Color(1f, 0.25f, 0.25f);
@@ -78,7 +66,7 @@ public class HunterAgent : Agent
     [SerializeField] private Color _deadColor = new Color(0.35f, 0.35f, 0.35f);
 
     private readonly FiniteStateMachine<HunterState> _fsm = new FiniteStateMachine<HunterState>();
-    [SerializeField] private List<Zone> _safeZones = new List<Zone>();
+    private readonly List<Zone> _safeZones = new List<Zone>();
     private readonly List<Node> _huntingNodes = new List<Node>();
     private readonly List<Renderer> _hiddenRenderers = new List<Renderer>();
     private readonly List<Collider> _disabledColliders = new List<Collider>();
@@ -88,15 +76,14 @@ public class HunterAgent : Agent
     private GraphNavigator _navigator;
     private Graph _graph;
 
-    [SerializeField] private Zone _initialZone;
-    [SerializeField] private Zone _huntingZone;
-    [SerializeField] private Zone _exitZone;
+    private Zone _initialZone;
+    private Zone _huntingZone;
+    private Zone _exitZone;
     [SerializeField] private Vector3 _startPosition;
 
     private float _attackCooldown;
     private int _gathers;
     private bool _bodyVisible = true;
-    private bool _legacyMode;
     private bool _captureRequested;
     private bool _hasReportedAvailability;
     private bool _reportedPresent;
@@ -121,11 +108,6 @@ public class HunterAgent : Agent
     public float InterestPointInterval => _interestPointInterval;
     public int MaxActiveInterestPoints => _maxActiveInterestPoints;
     public InterestPoint InterestPointPrefab => _interestPointPrefab;
-    public float InterestPointPlaceDuration => _legacyInterestPointPlaceDuration;
-    public IReadOnlyList<Transform> LegacyWaypoints => _legacyWaypoints;
-    public float WaypointArrivalDistance => _legacyWaypointArrivalDistance;
-    public bool PingPongPatrol => _legacyPingPongPatrol;
-    public bool IsLegacyMode => _legacyMode;
 
     public int Gathers => _gathers;
     public bool IsDead => _fsm.CurrentStateID == HunterState.Dead;
@@ -155,7 +137,11 @@ public class HunterAgent : Agent
     private void Awake()
     {
         Current = this;
+        InitializeComponents();
+    }
 
+    private void InitializeComponents()
+    {
         DisablePhysicsInterference();
 
         if (GetComponentInChildren<Collider>() == null)
@@ -182,41 +168,47 @@ public class HunterAgent : Agent
     private void Start()
     {
         _graph = Graph.Current;
-
-        if (_startPosition == Vector3.zero) _startPosition = transform.position;
-
-        Perception.Configure();
-        BuildHuntingNodeList();
-
-        _legacyMode = _huntingZone == null || _initialZone == null || _exitZone == null;
-        _fsm.AddGlobalTransition(HunterState.Dead, HasBeenCaptured);
-
-        if (_legacyMode)
+        ResolveZones();
+        if (_graph == null || _initialZone == null || _huntingZone == null || _exitZone == null || _safeZones.Count < 2)
         {
-            _fsm.AddState(HunterState.Search, new HunterLegacyPatrolState(this));
-            _fsm.AddState(HunterState.Attack, new HunterAttackState(this));
-            _fsm.AddState(HunterState.Gather, new HunterGatherState(this));
-            _fsm.AddState(HunterState.Dead, new HunterDeadState(this));
-
-            _fsm.OnStateChanged += ResetNavigation;
-            _fsm.ChangeState(HunterState.Search);
-
-            FeedbackLog.Add("[Hunter] Exam 1 mode: waypoint patrol.", new Color(0.4f, 1f, 0.5f), false);
+            Debug.LogWarning("The hunter needs a navigation graph and all Exam 2 zones.", this);
+            enabled = false;
             return;
         }
+        _startPosition = _initialZone.Center;
+        _startPosition.y = transform.position.y;
+        Perception.Configure();
+        BuildHuntingNodeList();
+        InitializeStates();
+        _fsm.ChangeState(HunterState.Search);
+        FeedbackLog.Add("[Hunter] Starting in the initial zone. Required gathers: " + RequiredGathers + " boids before reaching the exit.", new Color(0.4f, 1f, 0.5f));
+    }
 
+    private void ResolveZones()
+    {
+        _safeZones.Clear();
+        foreach (Zone zone in Zone.All)
+        {
+            switch (zone.Type)
+            {
+                case ZoneType.Initial: _initialZone = zone; break;
+                case ZoneType.Hunting: _huntingZone = zone; break;
+                case ZoneType.Exit: _exitZone = zone; break;
+                case ZoneType.Safe: _safeZones.Add(zone); break;
+            }
+        }
+    }
+
+    private void InitializeStates()
+    {
+        _fsm.AddGlobalTransition(HunterState.Dead, HasBeenCaptured);
         _fsm.AddState(HunterState.Search, new HunterSearchState(this));
         _fsm.AddState(HunterState.Attack, new HunterAttackState(this));
         _fsm.AddState(HunterState.Gather, new HunterGatherState(this));
         _fsm.AddState(HunterState.Flee, new HunterFleeState(this));
         _fsm.AddState(HunterState.Exit, new HunterExitState(this));
         _fsm.AddState(HunterState.Dead, new HunterDeadState(this));
-
         _fsm.OnStateChanged += ResetNavigation;
-
-        _fsm.ChangeState(HunterState.Search);
-
-        FeedbackLog.Add("[Hunter] Starting in the initial zone. Required gathers: " + RequiredGathers + " boids before reaching the exit.", new Color(0.4f, 1f, 0.5f));
     }
 
     private bool HasBeenCaptured()
@@ -314,22 +306,7 @@ public class HunterAgent : Agent
 
     public void StopMoving() => _velocity = Vector3.zero;
 
-    public void MoveTowards(Vector3 targetPosition)
-    {
-        Vector3 direction = targetPosition - transform.position;
-        direction.y = 0f;
 
-        if (direction.sqrMagnitude < 0.0001f)
-        {
-            StopMoving();
-            return;
-        }
-
-        direction.Normalize();
-        _velocity = direction * _moveSpeed;
-        transform.position += _velocity * Time.deltaTime;
-        transform.forward = direction;
-    }
 
     public float FlatDistanceTo(Vector3 position)
     {

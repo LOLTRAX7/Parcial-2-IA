@@ -153,10 +153,6 @@ MonoBehaviour:
   _interestPointPrefab: {fileID: 4923678221652138490, guid: bc15d702259ff964d93f8e36d48fbd35, type: 3}
   _interestPointInterval: 6
   _maxActiveInterestPoints: 5
-  _legacyInterestPointPlaceDuration: 2
-  _legacyWaypoints: []
-  _legacyWaypointArrivalDistance: 0.4
-  _legacyPingPongPatrol: 0
   _searchColor: {r: 1, g: 1, b: 1, a: 1}
   _attackColor: {r: 1, g: 0.25, b: 0.25, a: 1}
   _gatherColor: {r: 1, g: 0.9, b: 0.2, a: 1}
@@ -164,9 +160,6 @@ MonoBehaviour:
   _exitColor: {r: 0.3, g: 1, b: 0.4, a: 1}
   _deadColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
   _safeZones: []
-  _initialZone: {fileID: 0}
-  _huntingZone: {fileID: 0}
-  _exitZone: {fileID: 0}
   _startPosition: {x: 0, y: 0, z: 0}
 --- !u!114 &4625407416050413677
 MonoBehaviour:
