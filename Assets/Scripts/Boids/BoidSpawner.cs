@@ -5,8 +5,11 @@ public class BoidSpawner : MonoBehaviour
     [SerializeField] private BoidAgent boidPrefab;
     [SerializeField] private int count = 8;
 
+
     private void Start()
     {
+
+
         if (boidPrefab == null)
         {
             Debug.LogWarning("[BoidSpawner] No BoidAgent prefab assigned.", this);
@@ -27,4 +30,5 @@ public class BoidSpawner : MonoBehaviour
             boid.name = "Boid_" + (i + 1);
         }
     }
+    
 }

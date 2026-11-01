@@ -4,17 +4,16 @@ using UnityEngine;
 
 public class FiniteStateMachine<T>
 {
+    public event Action<T> OnStateChanged = delegate { };
+    public T CurrentStateID { get; private set; }
     private State<T> _currentState;
     private readonly Dictionary<T, State<T>> _allStates = new Dictionary<T, State<T>>();
     private readonly List<(T target, Func<bool> condition)> _globalTransitions = new List<(T target, Func<bool> condition)>();
-
+    
     public void AddGlobalTransition(T target, Func<bool> condition)
     {
         _globalTransitions.Add((target, condition));
     }
-
-    public T CurrentStateID { get; private set; }
-    public event Action<T> OnStateChanged = delegate { };
 
     public void AddState(T ID, State<T> state)
     {
@@ -30,7 +29,7 @@ public class FiniteStateMachine<T>
     {
         if (!_allStates.ContainsKey(ID))
         {
-            Debug.LogError("Missing State!");
+         Debug.LogError("Missing State!");
             return;
         }
 
@@ -41,16 +40,16 @@ public class FiniteStateMachine<T>
         _currentState.Enter();
     }
 
+    // Revisa las transiciones globales antes del estado actua
     public void Update()
     {
         foreach (var transition in _globalTransitions)
         {
-            if (EqualityComparer<T>.Default.Equals(CurrentStateID, transition.target)) continue;
+         if (EqualityComparer<T>.Default.Equals(CurrentStateID, transition.target)) continue;
             if (!transition.condition()) continue;
             ChangeState(transition.target);
             return;
         }
-
         if (_currentState != null) _currentState.Update();
     }
 }

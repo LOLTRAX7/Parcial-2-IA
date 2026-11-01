@@ -3,12 +3,10 @@ using UnityEngine;
 public class WolfChaseState : State<WolfAgent.WolfState>
 {
     private readonly WolfAgent _wolf;
-
     public WolfChaseState(WolfAgent wolf)
     {
         _wolf = wolf;
     }
-
     public override void Enter()
     {
         if (_wolf.HunterIsDead || _wolf.HunterInsideSafeZone)
@@ -25,7 +23,6 @@ public class WolfChaseState : State<WolfAgent.WolfState>
 
         _wolf.NotifyTargetSpotted();
     }
-
     public override void Update()
     {
         if (_wolf.HunterIsDead)
@@ -37,7 +34,7 @@ public class WolfChaseState : State<WolfAgent.WolfState>
 
         if (_wolf.HunterInsideSafeZone)
         {
-            FeedbackLog.Add(_wolf.name + " stops chasing: the hunter entered a safe zone.", new Color(0.65f, 0.5f, 0.92f));
+            Debug.Log(_wolf.name + " stops chasing: the hunter entered a safe zone.");
             _wolf.ForgetHunter();
             _fsm.ChangeState(WolfAgent.WolfState.Patrol);
             return;
@@ -58,6 +55,5 @@ public class WolfChaseState : State<WolfAgent.WolfState>
         _wolf.ForgetHunter();
         _fsm.ChangeState(WolfAgent.WolfState.Patrol);
     }
-
     public override void Exit() => _wolf.StopMoving();
 }

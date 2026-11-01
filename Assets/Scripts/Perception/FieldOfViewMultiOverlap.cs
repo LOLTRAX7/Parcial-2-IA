@@ -3,16 +3,11 @@ using UnityEngine;
 
 public class FieldOfViewMultiOverlap : FieldOfViewSensor
 {
-    [Header("Overlap")]
     [SerializeField] private float _checkInterval = 0.2f;
-
     private readonly Collider[] _buffer = new Collider[128];
-
     private float _timer;
     private readonly List<Transform> _visibleTargets = new List<Transform>();
-
     public IReadOnlyList<Transform> VisibleTargets => _visibleTargets;
-
     private void Update()
     {
         _timer += Time.deltaTime;
@@ -23,7 +18,6 @@ public class FieldOfViewMultiOverlap : FieldOfViewSensor
             CheckVisibility();
         }
     }
-
     private void CheckVisibility()
     {
         int count = Physics.OverlapSphereNonAlloc(transform.position, _viewRadius, _buffer, _targetMask);

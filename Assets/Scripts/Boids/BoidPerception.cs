@@ -4,19 +4,20 @@ using UnityEngine;
 public class BoidPerception
 {
     private const float DetectionInterval = 0.2f;
+
     private readonly BoidAgent _owner;
+
     private readonly Collider[] _buffer = new Collider[128];
     private readonly List<BoidAgent> _neighbors = new List<BoidAgent>();
     private float _nextCheck;
     public IReadOnlyList<BoidAgent> Neighbors => _neighbors;
     public HunterAgent Threat { get; private set; }
     public InterestPoint InterestPoint { get; private set; }
-
     public BoidPerception(BoidAgent owner)
     {
         _owner = owner;
     }
-
+    // Revisa los objetos cercanos cada tanto
     public void Refresh(float neighborRadius, float threatRadius, float interestRadius)
     {
         if (Time.time < _nextCheck) return;
@@ -30,6 +31,7 @@ public class BoidPerception
         float radius = Mathf.Max(neighborRadius, Mathf.Max(threatRadius, interestRadius));
         int mask = GameLayers.BoidMask | GameLayers.HunterMask | GameLayers.InterestMask;
         int count = Physics.OverlapSphereNonAlloc(position, radius, _buffer, mask);
+
         for (int i = 0; i < count; i++)
         {
             Collider detected = _buffer[i];
@@ -47,6 +49,8 @@ public class BoidPerception
                 Threat = hunter;
                 nearestThreat = distance;
             }
+
+
             else if (detected.gameObject.layer == GameLayers.Interest && distance <= nearestInterest)
             {
                 InterestPoint point = detected.GetComponentInParent<InterestPoint>();
@@ -57,7 +61,6 @@ public class BoidPerception
             }
         }
     }
-
     public void Reset()
     {
         _nextCheck = 0f;

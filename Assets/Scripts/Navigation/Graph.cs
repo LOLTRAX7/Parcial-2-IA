@@ -4,36 +4,23 @@ using UnityEngine;
 [DefaultExecutionOrder(-300)]
 public class Graph : MonoBehaviour
 {
-    [Header("Connections")]
-    [Tooltip("Maximum distance between connected nodes.")]
     [SerializeField] private float _maxLinkDistance = 24f;
-    [Tooltip("Sphere radius for validating graph links; smaller than the doorway width.")]
     [SerializeField] private float _linkRadius = 0.65f;
-    [Tooltip("Agent body radius for direct movement checks.")]
     [SerializeField] private float _agentRadius = 0.45f;
     [SerializeField] private float _castHeight = 0.5f;
-    [Tooltip("Layers treated as walls.")]
     [SerializeField] private LayerMask _wallMask;
-
-    [Header("Debug")]
-    [Tooltip("Draw graph edges in the Game view with LineRenderers.")]
     [SerializeField] private bool _drawEdgesInGame = false;
     [SerializeField] private Color _edgeColor = new Color(1f, 0.45f, 0.8f, 0.65f);
-
     private readonly List<Node> _nodes = new List<Node>();
     private Transform _edgeVisuals;
     private bool _generated;
-
     public static Graph Current { get; private set; }
-
     public List<Node> GetAllNodes => _nodes;
     public LayerMask WallMask => _wallMask;
     public float CastHeight => _castHeight;
     public bool IsGenerated => _generated;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatic() => Current = null;
-
     private void Awake()
     {
         if (Current != null && Current != this)
@@ -45,19 +32,15 @@ public class Graph : MonoBehaviour
         Current = this;
         _nodes.AddRange(GetComponentsInChildren<Node>());
     }
-
     private void Start()
     {
         if (!_generated) GenerateConnections();
     }
-
     public void Configure(LayerMask wallMask)
     {
         _wallMask = wallMask;
     }
-
     public IReadOnlyList<Node> GetNeighbors(Node current) => current.Neighbors;
-
     public void GenerateConnections()
     {
         Physics.SyncTransforms();
@@ -84,23 +67,19 @@ public class Graph : MonoBehaviour
         _generated = true;
         BuildEdgeVisuals();
     }
-
     public bool IsPathClear(Vector3 origin, Vector3 destination)
     {
         return SweepClear(origin, destination, _agentRadius);
     }
-
     public bool CanTravel(Vector3 from, Vector3 to, bool avoidSafeZones = false)
     {
         return (!avoidSafeZones || !Zone.CrossesSafeZone(from, to, _agentRadius))
             && IsPathClear(from, to);
     }
-
     public bool IsLinkClear(Vector3 a, Vector3 b)
     {
         return SweepClear(a, b, _linkRadius);
     }
-
     private bool SweepClear(Vector3 origin, Vector3 destination, float radius)
     {
         Vector3 start = new Vector3(origin.x, _castHeight, origin.z);
@@ -121,7 +100,6 @@ public class Graph : MonoBehaviour
 
         return true;
     }
-
     public Node GetClosestNode(Vector3 position, bool avoidSafeZones = false)
     {
         Node best = null;
@@ -142,7 +120,6 @@ public class Graph : MonoBehaviour
 
         return best;
     }
-
     public Node GetClosestVisibleNode(Vector3 position, bool strict, bool avoidSafeZones = false)
     {
         Node best = null;
@@ -171,7 +148,6 @@ public class Graph : MonoBehaviour
 
         return best;
     }
-
     public void GetNodesWithin(Vector3 center, float radius, List<Node> results, bool avoidSafeZones = false)
     {
         results.Clear();
@@ -186,7 +162,6 @@ public class Graph : MonoBehaviour
             if (FlatSqrDistance(center, node.transform.position) <= sqr) results.Add(node);
         }
     }
-
     public float GetPathCost(Vector3 from, Vector3 to, bool avoidSafeZones = false)
     {
         Node start = GetClosestVisibleNode(from, false, avoidSafeZones);
@@ -208,19 +183,26 @@ public class Graph : MonoBehaviour
 
         return cost;
     }
-
     private static float FlatSqrDistance(Vector3 a, Vector3 b)
     {
         float dx = a.x - b.x;
         float dz = a.z - b.z;
         return dx * dx + dz * dz;
     }
-
     private static float FlatDistance(Vector3 a, Vector3 b)
     {
         return Mathf.Sqrt(FlatSqrDistance(a, b));
     }
-
+    private static Material CreateEdgeMaterial()
+    {
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Standard");
+        Material material = new Material(shader);
+        material.color = Color.white;
+        return material;
+    }
     private void BuildEdgeVisuals()
     {
         if (_edgeVisuals != null) Destroy(_edgeVisuals.gameObject);
@@ -230,7 +212,7 @@ public class Graph : MonoBehaviour
         _edgeVisuals = new GameObject("Edges").transform;
         _edgeVisuals.SetParent(transform, false);
 
-        Material material = FeedbackMaterials.CreateUnlit(Color.white);
+        Material material = CreateEdgeMaterial();
         Vector3 lift = Vector3.up * 0.08f;
 
         for (int i = 0; i < _nodes.Count; i++)
@@ -256,7 +238,6 @@ public class Graph : MonoBehaviour
             }
         }
     }
-
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.45f, 0.8f, 0.55f);

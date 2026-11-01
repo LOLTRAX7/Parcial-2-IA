@@ -5,12 +5,10 @@ public class HunterGatherState : State<HunterAgent.HunterState>
     private readonly HunterAgent _hunter;
     private BoidAgent _target;
     private float _gatherTimer;
-
     public HunterGatherState(HunterAgent hunter)
     {
         _hunter = hunter;
     }
-
     public override void Enter()
     {
         _target = _hunter.Perception.FindNearestEliminatedBoid();
@@ -23,9 +21,7 @@ public class HunterGatherState : State<HunterAgent.HunterState>
         }
 
         _hunter.SetFeedback(HunterAgent.HunterState.Gather, _target);
-        FeedbackLog.Add("[Hunter] Gather: moving to collect " + _target.name + ".", new Color(1f, 0.9f, 0.3f), false);
     }
-
     public override void Update()
     {
         if (_hunter.ShouldFlee)
@@ -36,7 +32,6 @@ public class HunterGatherState : State<HunterAgent.HunterState>
 
         if (_target == null || !_target.isActiveAndEnabled || !_target.IsEliminated || !_target.IsPendingGather)
         {
-            FeedbackLog.Add("[Hunter] Gather cancelled: target no longer available.", Color.yellow, false);
             _fsm.ChangeState(HunterAgent.HunterState.Search);
             return;
         }
@@ -69,7 +64,6 @@ public class HunterGatherState : State<HunterAgent.HunterState>
         else
             _fsm.ChangeState(HunterAgent.HunterState.Search);
     }
-
     public override void Exit()
     {
         _hunter.StopMoving();

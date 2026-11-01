@@ -3,25 +3,20 @@ using UnityEngine;
 public class WolfPatrolState : State<WolfAgent.WolfState>
 {
     private readonly WolfAgent _wolf;
-
     private int _index;
     private int _direction = 1;
     private bool _firstEnter = true;
-
     public WolfPatrolState(WolfAgent wolf)
     {
         _wolf = wolf;
     }
-
     public override void Enter()
     {
         if (_wolf.PatrolNodes.Count == 0) return;
 
         _index = _firstEnter ? 0 : GetClosestWaypointIndex();
         _firstEnter = false;
-        FeedbackLog.Add(_wolf.name + " patrols through " + _wolf.PatrolNodes.Count + " waypoints.", new Color(0.75f, 0.75f, 0.8f), false);
     }
-
     public override void Update()
     {
         if (_wolf.PatrolNodes.Count == 0) return;
@@ -49,7 +44,6 @@ public class WolfPatrolState : State<WolfAgent.WolfState>
 
         Advance();
     }
-
     private void Advance()
     {
         int count = _wolf.PatrolNodes.Count;
@@ -79,7 +73,6 @@ public class WolfPatrolState : State<WolfAgent.WolfState>
             _direction = 1;
         }
     }
-
     private int GetClosestWaypointIndex()
     {
         int best = 0;
@@ -98,6 +91,5 @@ public class WolfPatrolState : State<WolfAgent.WolfState>
 
         return best;
     }
-
     public override void Exit() => _wolf.StopMoving();
 }

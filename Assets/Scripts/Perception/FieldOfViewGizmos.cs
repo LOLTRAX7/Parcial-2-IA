@@ -4,20 +4,16 @@ using UnityEngine;
 public class FieldOfViewGizmos : MonoBehaviour
 {
     [SerializeField] private bool _drawDetectionLine = true;
-
     private FieldOfViewSensor _sensor;
-
     private Vector3 DirFromAngle(float angleDegrees)
     {
         float angleRad = (transform.eulerAngles.y + angleDegrees) * Mathf.Deg2Rad;
         return new Vector3(Mathf.Sin(angleRad), 0f, Mathf.Cos(angleRad));
     }
-
     private void OnDrawGizmosSelected()
     {
         Draw();
     }
-
     private void Draw()
     {
         if (_sensor == null) _sensor = GetComponent<FieldOfViewSensor>();

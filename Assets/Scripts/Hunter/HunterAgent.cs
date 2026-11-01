@@ -7,57 +7,39 @@ using UnityEngine.Serialization;
 public class HunterAgent : Agent
 {
     public enum HunterState { Search, Attack, Gather, Flee, Exit, Dead }
-
     public static HunterAgent Current { get; private set; }
     public static event Action<bool, bool> AvailabilityChanged = delegate { };
-
-    [Header("Movement")]
     [FormerlySerializedAs("moveSpeed")]
     [SerializeField] private float _moveSpeed = 5.2f;
     [SerializeField] private float _fleeSpeed = 6.2f;
     [SerializeField] private float _turnSpeed = 720f;
     [SerializeField] private float _maxSteering = 24f;
-
-    [Header("Perception (boids and wolves)")]
-    [Tooltip("Perception radius for live boids, eliminated boids and wolves, blocked by walls.")]
     [FormerlySerializedAs("perceptionRadius")]
     [SerializeField] private float _visionRadius = 14f;
     [SerializeField] private float _eyeHeight = 0.6f;
-    [Tooltip("Start attacking slightly inside the vision limit to avoid repeated acquisition and loss at its edge.")]
     [SerializeField] private float _targetAcquireMargin = 1f;
 
-    [Header("Hunter requirements")]
-    [Tooltip("Required gathers before moving to the exit.")]
     [field: SerializeField] public int RequiredGathers { get; private set; } = 3;
-    [Tooltip("Respawn delay after being captured by a wolf.")]
     [field: SerializeField] public float RespawnTime { get; private set; } = 5f;
-    [Tooltip("Safe zone wait duration before resuming activity.")]
     [field: SerializeField] public float SafeZoneWaitTime { get; private set; } = 4f;
-
-    [Header("Attack")]
     [field: SerializeField] public float TBA { get; private set; } = 1.5f;
     [field: SerializeField] public float MeleeAttackRadius { get; private set; } = 2f;
     [field: SerializeField] public float RangeAttackRadius { get; private set; } = 7f;
+    
     [SerializeField] private float _meleeDamage = 100f;
     [SerializeField] private float _rangedDamage = 50f;
-
-    [Header("Gathering")]
     [FormerlySerializedAs("gatherInteractionRadius")]
     [SerializeField] private float _gatherInteractionRadius = 1.5f;
     [FormerlySerializedAs("gatherDuration")]
     [SerializeField] private float _gatherDuration = 2f;
     [FormerlySerializedAs("boidRespawnDelay")]
     [SerializeField] private float _boidRespawnDelay = 5f;
-
-    [Header("Interest points")]
-    [Tooltip("Interest point prefab spawned inside the hunting ground.")]
     [FormerlySerializedAs("interestPointPrefab")]
     [SerializeField] private InterestPoint _interestPointPrefab;
     [FormerlySerializedAs("poiSpawnInterval")]
     [SerializeField] private float _interestPointInterval = 6f;
     [FormerlySerializedAs("maxActiveInterestPoints")]
     [SerializeField] private int _maxActiveInterestPoints = 5;
-    [Header("Visual feedback")]
     [SerializeField] private Color _searchColor = Color.white;
     [SerializeField] private Color _attackColor = new Color(1f, 0.25f, 0.25f);
     [SerializeField] private Color _gatherColor = new Color(1f, 0.9f, 0.2f);
@@ -70,8 +52,8 @@ public class HunterAgent : Agent
     private readonly List<Node> _huntingNodes = new List<Node>();
     private readonly List<Renderer> _hiddenRenderers = new List<Renderer>();
     private readonly List<Collider> _disabledColliders = new List<Collider>();
-
     private ColorFeedback _colorFeedback;
+
     private Collider _bodyCollider;
     private GraphNavigator _navigator;
     private Graph _graph;
@@ -80,7 +62,6 @@ public class HunterAgent : Agent
     private Zone _huntingZone;
     private Zone _exitZone;
     [SerializeField] private Vector3 _startPosition;
-
     private float _attackCooldown;
     private int _gathers;
     private bool _bodyVisible = true;
@@ -88,15 +69,12 @@ public class HunterAgent : Agent
     private bool _hasReportedAvailability;
     private bool _reportedPresent;
     private bool _reportedSafe;
-
     private string _debugTarget = "-";
     private Zone _chosenSafeZone;
-
     public Zone InitialZone => _initialZone;
     public Zone HuntingZone => _huntingZone;
     public Zone ExitZone => _exitZone;
     public IReadOnlyList<Zone> SafeZones => _safeZones;
-
     public float MoveSpeed => _moveSpeed;
     public float FleeSpeed => _fleeSpeed;
     public float VisionRadius => _visionRadius;
@@ -108,7 +86,6 @@ public class HunterAgent : Agent
     public float InterestPointInterval => _interestPointInterval;
     public int MaxActiveInterestPoints => _maxActiveInterestPoints;
     public InterestPoint InterestPointPrefab => _interestPointPrefab;
-
     public int Gathers => _gathers;
     public bool IsDead => _fsm.CurrentStateID == HunterState.Dead;
     public bool IsPresent => _bodyVisible && !IsDead && !_captureRequested;
@@ -119,27 +96,22 @@ public class HunterAgent : Agent
     public float BodyRadius => _bodyCollider != null
         ? Mathf.Max(_bodyCollider.bounds.extents.x, _bodyCollider.bounds.extents.z) : 0.4f;
     public bool IsInSafeZone => Zone.IsInsideSafeZone(transform.position, BodyRadius);
-
     public HunterPerception Perception { get; private set; }
     public HunterInterestPoints InterestPoints { get; private set; }
     public int VisibleWolfCount => Perception != null ? Perception.VisibleWolfCount : 0;
     public bool ShouldFlee => IsPresent && !IsInSafeZone && Perception != null && Perception.CanSeeWolf;
-
     public string DebugTarget => _debugTarget;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatic()
     {
         Current = null;
         AvailabilityChanged = delegate { };
     }
-
     private void Awake()
     {
         Current = this;
         InitializeComponents();
     }
-
     private void InitializeComponents()
     {
         DisablePhysicsInterference();
@@ -164,7 +136,6 @@ public class HunterAgent : Agent
         InterestPoints = new HunterInterestPoints(this);
         gameObject.GetOrAddComponent<PathVisual>();
     }
-
     private void Start()
     {
         _graph = Graph.Current;
@@ -181,9 +152,8 @@ public class HunterAgent : Agent
         BuildHuntingNodeList();
         InitializeStates();
         _fsm.ChangeState(HunterState.Search);
-        FeedbackLog.Add("[Hunter] Starting in the initial zone. Required gathers: " + RequiredGathers + " boids before reaching the exit.", new Color(0.4f, 1f, 0.5f));
+        Debug.Log("[Hunter] Starting in the initial zone. Required gathers: " + RequiredGathers + " boids before reaching the exit.");
     }
-
     private void ResolveZones()
     {
         _safeZones.Clear();
@@ -198,7 +168,6 @@ public class HunterAgent : Agent
             }
         }
     }
-
     private void InitializeStates()
     {
         _fsm.AddGlobalTransition(HunterState.Dead, HasBeenCaptured);
@@ -210,24 +179,20 @@ public class HunterAgent : Agent
         _fsm.AddState(HunterState.Dead, new HunterDeadState(this));
         _fsm.OnStateChanged += ResetNavigation;
     }
-
     private bool HasBeenCaptured()
     {
         return _captureRequested;
     }
-
     private void ResetNavigation(HunterState state)
     {
         _navigator.ResetPath();
     }
-
     private void OnDestroy()
     {
         if (Current != this) return;
         Current = null;
         AvailabilityChanged(false, false);
     }
-
     private void BuildHuntingNodeList()
     {
         _huntingNodes.Clear();
@@ -240,14 +205,12 @@ public class HunterAgent : Agent
                 _huntingNodes.Add(node);
         }
     }
-
     private void Update()
     {
         if (_attackCooldown > 0f) _attackCooldown -= Time.deltaTime;
 
         _fsm.Update();
     }
-
     private void LateUpdate()
     {
         bool present = IsPresent;
@@ -259,13 +222,11 @@ public class HunterAgent : Agent
         _reportedSafe = safe;
         AvailabilityChanged(present, safe);
     }
-
     public void MoveTo(Vector3 destination, float speed)
     {
         Vector3 next = _navigator.GetNextPoint(destination);
         MoveDirect(next, speed);
     }
-
     public void MoveDirect(Vector3 destination, float speed)
     {
         Vector3 direction = destination - transform.position;
@@ -282,7 +243,6 @@ public class HunterAgent : Agent
         Quaternion desired = Quaternion.LookRotation(direction.normalized, Vector3.up);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, desired, _turnSpeed * Time.deltaTime);
     }
-
     public void PursueBoid(BoidAgent target, float speed)
     {
         if (target == null) return;
@@ -303,10 +263,7 @@ public class HunterAgent : Agent
 
         MoveDirect(futurePosition, speed);
     }
-
     public void StopMoving() => _velocity = Vector3.zero;
-
-
 
     public float FlatDistanceTo(Vector3 position)
     {
@@ -314,49 +271,41 @@ public class HunterAgent : Agent
         offset.y = 0f;
         return offset.magnitude;
     }
-
     public bool HasReached(Vector3 position, float arrivalDistance)
     {
         return FlatDistanceTo(position) <= arrivalDistance;
     }
-
     public Node GetRandomHuntingNode()
     {
         if (_huntingNodes.Count == 0) return null;
         return _huntingNodes[UnityEngine.Random.Range(0, _huntingNodes.Count)];
     }
-
     public void ResetAttackTimer()
     {
         _attackCooldown = TBA;
     }
-
     public void PerformMeleeAttack(BoidAgent target)
     {
         string action = "Melee attack on " + target.name;
         target.TakeDamage(_meleeDamage);
         if (_colorFeedback != null) _colorFeedback.Flash(_attackColor, 0.2f);
-        FeedbackLog.Add("[Hunter] " + action, _attackColor);
+        Debug.Log("[Hunter] " + action);
         ResetAttackTimer();
     }
-
     public void PerformRangedAttack(BoidAgent target)
     {
         string action = "Ranged attack on " + target.name;
         target.TakeDamage(_rangedDamage);
         if (_colorFeedback != null) _colorFeedback.Flash(_attackColor, 0.2f);
-        FeedbackLog.Add("[Hunter] " + action, _attackColor);
+        Debug.Log("[Hunter] " + action);
         ResetAttackTimer();
     }
-
     public void AddGather()
     {
         _gathers++;
-        FeedbackLog.Add("[Hunter] Gather completed (" + _gathers + "/" + RequiredGathers + ").", new Color(0.4f, 1f, 0.4f));
+        Debug.Log("[Hunter] Gather completed (" + _gathers + "/" + RequiredGathers + ").");
     }
-
     public void ResetGathers() => _gathers = 0;
-
     public Zone ChooseNearestSafeZone()
     {
         Zone best = null;
@@ -380,15 +329,13 @@ public class HunterAgent : Agent
         _chosenSafeZone = best;
         return best;
     }
-
     public void DieFromWolf()
     {
         if (IsDead || _captureRequested) return;
 
-        FeedbackLog.Add("[Hunter] Captured by a wolf. Entering DEAD.", new Color(1f, 0.2f, 0.2f));
+        Debug.Log("[Hunter] Captured by a wolf. Entering DEAD.");
         _captureRequested = true;
     }
-
     public void SetBodyVisible(bool visible)
     {
         if (_bodyVisible == visible) return;
@@ -430,7 +377,6 @@ public class HunterAgent : Agent
         _hiddenRenderers.Clear();
         _disabledColliders.Clear();
     }
-
     public void RespawnAtInitialZone()
     {
         _captureRequested = false;
@@ -443,7 +389,6 @@ public class HunterAgent : Agent
         SetBodyVisible(true);
         _debugTarget = "-";
     }
-
     public void SetFeedback(HunterState state, BoidAgent target = null)
     {
         _debugTarget = target != null ? target.name : "-";
@@ -453,7 +398,6 @@ public class HunterAgent : Agent
             _colorFeedback.SetColor(ColorFor(state));
         }
     }
-
     public Color ColorFor(HunterState state)
     {
         switch (state)

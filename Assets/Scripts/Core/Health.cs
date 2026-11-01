@@ -5,20 +5,17 @@ public class Health : MonoBehaviour
 {
     public event Action<float> OnDamaged = delegate { };
     public event Action OnDied = delegate { };
-
     [SerializeField] private float _maxHealth = 100f;
-
     public float Max => _maxHealth;
     public float Current { get; private set; }
     public bool IsDead { get; private set; }
-
     public float Normalized => _maxHealth > 0f ? Current / _maxHealth : 0f;
+
 
     private void Awake()
     {
         Current = _maxHealth;
     }
-
     public void Initialize(float maxHealth)
     {
         _maxHealth = maxHealth;
@@ -37,7 +34,6 @@ public class Health : MonoBehaviour
         IsDead = true;
         OnDied?.Invoke();
     }
-
     public void ResetHealth()
     {
         Current = _maxHealth;

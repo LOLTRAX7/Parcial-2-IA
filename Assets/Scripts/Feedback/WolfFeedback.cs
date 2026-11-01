@@ -8,7 +8,6 @@ public class WolfFeedback : MonoBehaviour
     [SerializeField] private Color _chaseColor = new Color(1f, 0.15f, 0.15f);
     [SerializeField] private Color _searchColor = new Color(1f, 0.9f, 0.2f);
     [SerializeField] private Color _alertFlashColor = new Color(0.2f, 0.9f, 1f);
-
     private WolfAgent _wolf;
     private ColorFeedback _colorFeedback;
     private AudioSource _audio;
@@ -16,7 +15,6 @@ public class WolfFeedback : MonoBehaviour
     private string _text;
     private string _message;
     private float _messageUntil;
-
     private void Awake()
     {
         _wolf = GetComponent<WolfAgent>();
@@ -26,21 +24,18 @@ public class WolfFeedback : MonoBehaviour
         _audio.spatialBlend = 0f;
         _audio.volume = 0.5f;
     }
-
     private void OnEnable()
     {
         _wolf.OnStateChanged += HandleStateChanged;
         _wolf.OnHowled += HandleHowled;
         _wolf.OnAlertReceived += HandleAlertReceived;
     }
-
     private void OnDisable()
     {
         _wolf.OnStateChanged -= HandleStateChanged;
         _wolf.OnHowled -= HandleHowled;
         _wolf.OnAlertReceived -= HandleAlertReceived;
     }
-
     private void HandleStateChanged(WolfAgent.WolfState state)
     {
         Color color = _patrolColor;
@@ -52,21 +47,18 @@ public class WolfFeedback : MonoBehaviour
         }
         _colorFeedback.SetColor(color);
     }
-
     private void HandleHowled(Vector3 position)
     {
         if (_howlClip != null) _audio.PlayOneShot(_howlClip);
         _message = "Alerta enviada";
         _messageUntil = Time.time + 2f;
     }
-
     private void HandleAlertReceived(WolfAgent source, Vector3 position)
     {
         _colorFeedback.Flash(_alertFlashColor, 0.7f);
         _message = "Alerta recibida de " + FeedbackLabel.AgentName(source.name);
         _messageUntil = Time.time + 2f;
     }
-
     private void LateUpdate()
     {
         _text = FeedbackLabel.AgentName(name) + ": " + StateName();
@@ -75,7 +67,6 @@ public class WolfFeedback : MonoBehaviour
         if (_wolf.HasKnownPosition) _text += "\nÚltima posición: " + WolfAgent.Format(_wolf.LastKnownPosition);
         if (Time.time < _messageUntil) _text += "\n" + _message;
     }
-
     private string StateName()
     {
         switch (_wolf.CurrentState)
@@ -87,12 +78,10 @@ public class WolfFeedback : MonoBehaviour
             default: return "";
         }
     }
-
     private void OnGUI()
     {
         FeedbackLabel.DrawGame(transform.position + Vector3.up * 2f, _text);
     }
-
     private void OnDrawGizmos()
     {
         FeedbackLabel.DrawScene(transform.position + Vector3.up * 2f, _text);

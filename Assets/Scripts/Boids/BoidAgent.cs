@@ -4,44 +4,31 @@ using UnityEngine;
 
 public class BoidAgent : Agent
 {
-    [Header("Movement")]
     [SerializeField] private float maxSpeed = 4f;
     [SerializeField] private float maxForce = 6f;
-
-    [Header("Flocking")]
     [SerializeField] private float separationRadius = 2f;
     [SerializeField] private float neighborRadius = 5f;
     [SerializeField, Range(0f, 5f)] private float separationWeight = 1.6f;
     [SerializeField, Range(0f, 5f)] private float alignmentWeight = 1f;
     [SerializeField, Range(0f, 5f)] private float cohesionWeight = 1f;
-
-    [Header("Evade")]
     [SerializeField] private float hunterVisionRadius = 6f;
     [SerializeField, Range(0f, 5f)] private float evadeWeight = 2.2f;
-    [Tooltip("Extra threat detection margin while evading to avoid flickering at the vision boundary.")]
     [SerializeField] private float threatLossMargin = 2f;
-    [Range(0f, 1f), Tooltip("Separation weight multiplier while evading; keep above zero to prevent overlap.")]
+    [Range(0f, 1f)]
     [SerializeField] private float separationWeightWhileEvading = 0.35f;
-
-    [Header("Arrive")]
     [SerializeField] private float poiVisionRadius = 10f;
     [SerializeField] private float arriveSlowingDistance = 3f;
     [SerializeField] private float arriveMinDistance = 1.2f;
     [SerializeField, Range(0f, 5f)] private float arriveWeight = 1.4f;
     [SerializeField] private float harvestInterval = 1f;
     [SerializeField] private float harvestDamage = 10f;
-
-    [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
-
-    [Header("Visual feedback")]
     [SerializeField] private Renderer feedbackRenderer;
     [SerializeField] private Color evadeColor = new Color(1f, 0.55f, 0f);
     [SerializeField] private Color harvestColor = new Color(0.3f, 0.6f, 1f);
     [SerializeField] private Color eliminatedColor = Color.gray;
 
     private BoidPerception _perception;
-
     private Health _health;
     private ColorFeedback _colorFeedback;
     private readonly List<BoidAgent> _neighbors = new List<BoidAgent>();
@@ -50,11 +37,8 @@ public class BoidAgent : Agent
     private float _harvestTimer;
     private Collider _collider;
     private float _spawnHeight;
-
     public bool IsEliminated { get; private set; }
-
     public float HealthNormalized => _health != null ? _health.Normalized : 1f;
-
     public bool IsPendingGather { get; private set; }
 
     private void Awake()
@@ -62,15 +46,19 @@ public class BoidAgent : Agent
         InitializeComponents();
         _velocity = RandomDirection() * maxSpeed;
     }
-
+    private void Update()
+    {
+        if (IsEliminated) return;
+        RefreshPerception();
+        Vector3 steering = CalculateSteering();
+        ApplyMovement(steering);
+    }
     private void InitializeComponents()
     {
         _spawnHeight = transform.position.y;
         GameLayers.SetLayer(gameObject, GameLayers.Boid);
         DisablePhysicsInterference();
-
         _collider = GetComponent<Collider>();
-
         if (_collider == null)
         {
             SphereCollider sphere = gameObject.AddComponent<SphereCollider>();
@@ -81,57 +69,40 @@ public class BoidAgent : Agent
 
         _health = gameObject.GetOrAddComponent<Health>();
         _health.Initialize(maxHealth);
-
         if (feedbackRenderer == null) feedbackRenderer = GetComponentInChildren<Renderer>();
-
         _colorFeedback = gameObject.GetOrAddComponent<ColorFeedback>();
         _colorFeedback.SetRenderer(feedbackRenderer);
-
         _perception = new BoidPerception(this);
     }
-
     private void OnEnable()
     {
         if (_health != null) _health.OnDied += HandleDied;
     }
-
     private void OnDisable()
     {
         if (_health != null) _health.OnDied -= HandleDied;
     }
-
     private Color OriginalColor => _colorFeedback != null ? _colorFeedback.BaseColor : Color.white;
-
-    private void Update()
-    {
-        if (IsEliminated) return;
-        RefreshPerception();
-        Vector3 steering = CalculateSteering();
-        ApplyMovement(steering);
-    }
-
+    
+    // Si aparece el cazador la prioridad  es escapar.
     private Vector3 CalculateSteering()
     {
         bool hasThreat = _threat != null;
-
         float currentSeparationWeight = hasThreat ? separationWeight * separationWeightWhileEvading : separationWeight;
         float currentAlignmentWeight = hasThreat ? 0f : alignmentWeight;
         float currentCohesionWeight = hasThreat ? 0f : cohesionWeight;
-
         Vector3 steering = CalculateSeparation() * currentSeparationWeight
                           + CalculateAlignment() * currentAlignmentWeight
                           + CalculateCohesion() * currentCohesionWeight;
 
         if (hasThreat)
         {
-
             steering += Evade(_threat) * evadeWeight;
             SetFeedback(evadeColor);
         }
         else
         {
             UpdatePoiTarget();
-
             if (_targetPoi != null)
             {
 
@@ -144,7 +115,6 @@ public class BoidAgent : Agent
                 SetFeedback(OriginalColor);
             }
         }
-
         return steering;
     }
 
@@ -301,12 +271,10 @@ public class BoidAgent : Agent
         Vector3 toTarget = target - transform.position;
         toTarget.y = 0f;
         float distance = toTarget.magnitude;
-
         if (distance <= arriveMinDistance)
         {
             return SteeringFromDesired(Vector3.zero);
         }
-
         float speed = maxSpeed * Mathf.Clamp01(distance / arriveSlowingDistance);
         Vector3 desired = toTarget.normalized * speed;
         return SteeringFromDesired(desired);
@@ -339,9 +307,7 @@ public class BoidAgent : Agent
                 count++;
             }
         }
-
         if (count == 0) return Vector3.zero;
-
         return SteeringFromDesired((sum / count).normalized * maxSpeed);
     }
 
@@ -362,7 +328,6 @@ public class BoidAgent : Agent
                 count++;
             }
         }
-
         if (count == 0) return Vector3.zero;
 
         return SteeringFromDesired((sum / count).normalized * maxSpeed);
@@ -370,10 +335,8 @@ public class BoidAgent : Agent
 
     private Vector3 CalculateCohesion()
     {
-
         Vector3 centroid = Vector3.zero;
         int count = 0;
-
         foreach (var other in _neighbors)
         {
             if (other.IsEliminated) continue;
@@ -391,26 +354,18 @@ public class BoidAgent : Agent
         centroid /= count;
         return SteeringFromDesired(DesiredVelocity(centroid));
     }
-
     private void OnValidate()
     {
-        if (separationRadius >= neighborRadius)
-        {
-            Debug.LogWarning($"[{name}] Separation Radius ({separationRadius}) must be smaller than Neighbor Radius ({neighborRadius}).", this);
-        }
+        if (separationRadius >= neighborRadius) Debug.LogWarning($"[{name}] Separation Radius ({separationRadius}) must be smaller than Neighbor Radius ({neighborRadius}).", this);
     }
-
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.25f, 0.25f, 0.8f);
         Gizmos.DrawWireSphere(transform.position, separationRadius);
-
         Gizmos.color = new Color(0.2f, 0.9f, 1f, 0.6f);
         Gizmos.DrawWireSphere(transform.position, neighborRadius);
-
         Gizmos.color = new Color(1f, 0.55f, 0f, 0.8f);
         Gizmos.DrawWireSphere(transform.position, hunterVisionRadius);
-
         Gizmos.color = new Color(0.7f, 1f, 0.25f, 0.4f);
         Gizmos.DrawWireSphere(transform.position, poiVisionRadius);
     }

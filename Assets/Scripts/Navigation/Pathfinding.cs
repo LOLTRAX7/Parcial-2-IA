@@ -3,6 +3,7 @@ using UnityEngine;
 
 public static class Pathfinding
 {
+    // Busca la ruta usando el costo recorrido y la distancia que falta
     public static List<Node> AStar(Node startingNode, Node endNode, bool avoidSafeZones = false)
     {
         if (startingNode == null || endNode == null || startingNode.Blocked || endNode.Blocked)
@@ -54,7 +55,6 @@ public static class Pathfinding
 
         return new List<Node>();
     }
-
     private static List<Node> ReconstructPath(Dictionary<Node, Node> cameFrom, Node current)
     {
         List<Node> path = new List<Node>();
@@ -68,7 +68,6 @@ public static class Pathfinding
         path.Reverse();
         return path;
     }
-
     public static float PathCost(List<Node> path)
     {
         float cost = 0f;

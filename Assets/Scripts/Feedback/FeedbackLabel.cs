@@ -10,7 +10,6 @@ public static class FeedbackLabel
             .Replace("Boid_", "Oveja ").Replace("SafeZoneA", "Refugio A")
             .Replace("SafeZoneB", "Refugio B").Replace("Hunter", "Cazador");
     }
-
     public static void DrawGame(Vector3 position, string text)
     {
         Camera camera = Camera.main;
@@ -29,15 +28,14 @@ public static class FeedbackLabel
         float y = Mathf.Clamp(Screen.height - point.y - size.y, 4f, Mathf.Max(4f, Screen.height - size.y - 4f));
         GUI.Box(new Rect(x, y, size.x, size.y), text, style);
     }
-
     public static void DrawScene(Vector3 position, string text)
     {
-#if UNITY_EDITOR
+    #if UNITY_EDITOR
         if (!Application.isPlaying || string.IsNullOrEmpty(text)) return;
         GUIStyle style = new GUIStyle(UnityEditor.EditorStyles.helpBox);
         style.normal.textColor = Color.white;
         style.normal.background = Texture2D.blackTexture;
         UnityEditor.Handles.Label(position, text, style);
-#endif
+    #endif
     }
 }

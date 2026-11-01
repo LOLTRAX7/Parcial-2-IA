@@ -4,12 +4,10 @@ public class HunterAttackState : State<HunterAgent.HunterState>
 {
     private readonly HunterAgent _hunter;
     private BoidAgent _target;
-
     public HunterAttackState(HunterAgent hunter)
     {
         _hunter = hunter;
     }
-
     public override void Enter()
     {
         _target = _hunter.Perception.FindBestLiveBoid();
@@ -21,9 +19,7 @@ public class HunterAttackState : State<HunterAgent.HunterState>
         }
 
         _hunter.SetFeedback(HunterAgent.HunterState.Attack, _target);
-        FeedbackLog.Add("[Hunter] Attack: target " + _target.name + ".", new Color(1f, 0.4f, 0.4f), false);
     }
-
     public override void Update()
     {
         if (_hunter.ShouldFlee)
@@ -47,6 +43,7 @@ public class HunterAttackState : State<HunterAgent.HunterState>
         float distance = _hunter.FlatDistanceTo(_target.transform.position);
         bool inSight = distance <= _hunter.VisionRadius && _hunter.Perception.HasClearSightTo(_target.transform.position);
 
+        // Perder de vista al objetivo no reinicia el tiempo entre ataques.
         if (!inSight)
         {
             _hunter.SetFeedback(HunterAgent.HunterState.Attack, _target);
@@ -73,7 +70,6 @@ public class HunterAttackState : State<HunterAgent.HunterState>
         _hunter.PursueBoid(_target, _hunter.MoveSpeed);
         _hunter.SetFeedback(HunterAgent.HunterState.Attack, _target);
     }
-
     public override void Exit()
     {
         _hunter.StopMoving();

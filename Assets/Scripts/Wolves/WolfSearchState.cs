@@ -5,17 +5,14 @@ public class WolfSearchState : State<WolfAgent.WolfState>
 {
     private readonly WolfAgent _wolf;
     private readonly List<Node> _candidates = new List<Node>();
-
     private float _timer;
     private float _scanTimer;
     private bool _scanning;
     private int _index;
-
     public WolfSearchState(WolfAgent wolf)
     {
         _wolf = wolf;
     }
-
     public override void Enter()
     {
         _timer = _wolf.SearchDurationForState;
@@ -24,9 +21,7 @@ public class WolfSearchState : State<WolfAgent.WolfState>
         _index = 0;
 
         ChooseSearchPoints();
-        FeedbackLog.Add(_wolf.name + " searches for the hunter near " + WolfAgent.Format(_wolf.LastKnownPosition) + ".", new Color(1f, 0.9f, 0.2f), false);
     }
-
     public override void Update()
     {
         if (_wolf.HunterInsideSafeZone || _wolf.HunterIsDead)
@@ -85,7 +80,6 @@ public class WolfSearchState : State<WolfAgent.WolfState>
         _scanning = true;
         _scanTimer = _wolf.ScanDuration;
     }
-
     private void ChooseSearchPoints()
     {
         _candidates.Clear();
@@ -102,6 +96,5 @@ public class WolfSearchState : State<WolfAgent.WolfState>
             if (closest != null) _candidates.Add(closest);
         }
     }
-
     public override void Exit() => _wolf.StopMoving();
 }

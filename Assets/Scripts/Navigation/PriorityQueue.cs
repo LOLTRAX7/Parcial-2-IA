@@ -14,19 +14,14 @@ public class PriorityQueue<T>
             Priority = priority;
         }
     }
-
     private readonly List<Node> _heap = new List<Node>();
-
     public int Count => _heap.Count;
-
     public bool IsEmpty => _heap.Count == 0;
-
     public void Enqueue(T item, float priority)
     {
         _heap.Add(new Node(item, priority));
         HeapifyUp(_heap.Count - 1);
     }
-
     public T Dequeue()
     {
         if (_heap.Count == 0)
@@ -45,7 +40,6 @@ public class PriorityQueue<T>
 
         return root;
     }
-
     public T Peek()
     {
         if (_heap.Count == 0)
@@ -56,12 +50,10 @@ public class PriorityQueue<T>
 
         return _heap[0].Item;
     }
-
     public void Clear()
     {
         _heap.Clear();
     }
-
     private void HeapifyUp(int index)
     {
         while (index > 0)
@@ -75,7 +67,6 @@ public class PriorityQueue<T>
             index = parent;
         }
     }
-
     private void HeapifyDown(int index)
     {
         int lastIndex = _heap.Count - 1;
@@ -103,7 +94,6 @@ public class PriorityQueue<T>
             index = smallest;
         }
     }
-
     private void Swap(int a, int b)
     {
         Node temporary = _heap[a];

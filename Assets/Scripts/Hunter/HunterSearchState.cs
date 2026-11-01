@@ -3,24 +3,19 @@ using UnityEngine;
 public class HunterSearchState : State<HunterAgent.HunterState>
 {
     private readonly HunterAgent _hunter;
-
     private Vector3 _wanderTarget;
     private bool _hasWanderTarget;
     private float _interestTimer;
-
     public HunterSearchState(HunterAgent hunter)
     {
         _hunter = hunter;
     }
-
     public override void Enter()
     {
         _hasWanderTarget = false;
 
         _hunter.SetFeedback(HunterAgent.HunterState.Search, null);
-        FeedbackLog.Add("[Hunter] Search: moving to the hunting ground.", Color.white, false);
     }
-
     public override void Update()
     {
         if (_hunter.ShouldFlee)
@@ -28,7 +23,6 @@ public class HunterSearchState : State<HunterAgent.HunterState>
             _fsm.ChangeState(HunterAgent.HunterState.Flee);
             return;
         }
-
         if (_hunter.HuntingZone != null && _hunter.HuntingZone.Contains(_hunter.transform.position))
         {
             _interestTimer += Time.deltaTime;
@@ -38,7 +32,6 @@ public class HunterSearchState : State<HunterAgent.HunterState>
                 _hunter.InterestPoints.SpawnInHuntingZone();
             }
         }
-
         if (_hunter.Gathers >= _hunter.RequiredGathers)
         {
             _fsm.ChangeState(HunterAgent.HunterState.Exit);
@@ -62,9 +55,9 @@ public class HunterSearchState : State<HunterAgent.HunterState>
             _hunter.StopMoving();
             return;
         }
-
         if (!_hunter.HuntingZone.Contains(_hunter.transform.position))
         {
+
             _hunter.MoveTo(_hunter.HuntingZone.Center, _hunter.MoveSpeed);
             _hunter.SetFeedback(HunterAgent.HunterState.Search, null);
             return;
@@ -74,6 +67,7 @@ public class HunterSearchState : State<HunterAgent.HunterState>
 
         if (seesLiveBoid)
         {
+
             _hunter.StopMoving();
             _hunter.SetFeedback(HunterAgent.HunterState.Search, null);
             return;
@@ -81,8 +75,8 @@ public class HunterSearchState : State<HunterAgent.HunterState>
 
         if (!_hasWanderTarget)
         {
-            Node node = _hunter.GetRandomHuntingNode();
 
+            Node node = _hunter.GetRandomHuntingNode();
             if (node == null)
             {
                 _hunter.StopMoving();
@@ -92,7 +86,6 @@ public class HunterSearchState : State<HunterAgent.HunterState>
             _wanderTarget = node.transform.position;
             _hasWanderTarget = true;
         }
-
         _hunter.MoveTo(_wanderTarget, _hunter.MoveSpeed);
         _hunter.SetFeedback(HunterAgent.HunterState.Search, null);
 
@@ -101,7 +94,6 @@ public class HunterSearchState : State<HunterAgent.HunterState>
             _hasWanderTarget = false;
         }
     }
-
     public override void Exit()
     {
         _hunter.StopMoving();

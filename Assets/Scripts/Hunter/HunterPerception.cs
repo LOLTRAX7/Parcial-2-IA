@@ -9,37 +9,30 @@ public class HunterPerception
     private readonly Collider[] _queryBuffer = new Collider[128];
     private readonly List<BoidAgent> _perceivedBoids = new List<BoidAgent>();
     private float _nextBoidCheck;
-
     public int VisibleWolfCount => _wolfSensor.VisibleTargets.Count;
     public bool CanSeeWolf => _wolfSensor.CanSeeTarget;
-
     public HunterPerception(HunterAgent hunter, FieldOfViewMultiOverlap wolfSensor)
     {
         _hunter = hunter;
         _wolfSensor = wolfSensor;
     }
-
     public void Configure()
     {
         _wolfSensor.Configure(_hunter.VisionRadius, 360f, _hunter.EyeHeight,
             GameLayers.WolfMask, GameLayers.WallMask);
     }
-
     public BoidAgent FindNearestLiveBoid()
     {
         return FindBestBoid(false, false);
     }
-
     public BoidAgent FindNearestEliminatedBoid()
     {
         return FindBestBoid(true, false);
     }
-
     public BoidAgent FindBestLiveBoid()
     {
         return FindBestBoid(false, true);
     }
-
     private void RefreshBoids()
     {
         if (Time.time < _nextBoidCheck) return;
@@ -57,7 +50,6 @@ public class HunterPerception
             _perceivedBoids.Add(boid);
         }
     }
-
     private BoidAgent FindBestBoid(bool eliminated, bool chooseWeakest)
     {
         RefreshBoids();
@@ -73,8 +65,9 @@ public class HunterPerception
             if (boid == null || !boid.isActiveAndEnabled) continue;
             if (boid.IsEliminated != eliminated) continue;
             if (eliminated && !boid.IsPendingGather) continue;
-
+            
             float distance = _hunter.FlatDistanceTo(boid.transform.position);
+
             if (distance > searchRadius || !HasClearSightTo(boid.transform.position)) continue;
 
             float score = chooseWeakest ? boid.HealthNormalized : distance;
@@ -85,9 +78,10 @@ public class HunterPerception
                 bestDistance = distance;
             }
         }
+
+
         return best;
     }
-
     public bool HasClearSightTo(Vector3 targetPosition)
     {
         float height = _hunter.transform.position.y + _hunter.EyeHeight;
